@@ -2,7 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #ddd6fe 100%);
+  min-height: 100vh;
+}
+
 @layer utilities {
+  .gradient-purple {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  }
+
+  .gradient-purple-light {
+    background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+  }
+
+  .gradient-border {
+    border: 2px solid transparent;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%) border-box;
+  }
+
   .animation-pulse-slow {
     animation: pulse 2s ease-in-out infinite;
   }

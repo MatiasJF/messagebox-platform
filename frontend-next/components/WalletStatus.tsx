@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useWallet } from './WalletProvider'
+import { Wallet, Power, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 
 export function WalletStatus() {
   const { status, connect, disconnect, isLoading, error } = useWallet()
@@ -17,41 +18,61 @@ export function WalletStatus() {
   }
 
   return (
-    <div className="mt-6 p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+    <div className="flex flex-col items-center mb-8 max-w-4xl mx-auto">
       {!status.isConnected ? (
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <span className="font-medium text-slate-700 flex-1 min-w-[150px]">
-              Wallet Disconnected
-            </span>
-            <button
-              onClick={handleConnect}
-              disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              {isLoading ? 'Connecting...' : 'Connect Wallet'}
-            </button>
-          </div>
-          {(localError || error) && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-              {localError || error}
+        <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg gradient-border px-6 py-4 flex items-center gap-4 w-full">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Wallet className="w-5 h-5 text-purple-600" />
             </div>
-          )}
+            <span className="font-medium text-purple-900">Wallet Not Connected</span>
+          </div>
+          <button
+            onClick={handleConnect}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-5 py-2.5 gradient-purple text-white rounded-lg hover:shadow-lg transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Connecting...
+              </>
+            ) : (
+              <>
+                <Wallet className="w-4 h-4" />
+                Connect Wallet
+              </>
+            )}
+          </button>
         </div>
       ) : (
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          <span className="font-medium text-slate-700 flex-1 min-w-[150px]">
-            Connected: {status.identityKey?.substring(0, 12)}...
-          </span>
+        <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg gradient-border px-6 py-4 flex items-center gap-4 w-full">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-purple-900">Wallet Connected</p>
+              <code className="text-xs text-purple-600 font-mono">
+                {status.identityKey?.substring(0, 30)}...
+              </code>
+            </div>
+          </div>
           <button
             onClick={disconnect}
             disabled={isLoading}
-            className="px-4 py-2 bg-slate-600 text-white text-sm font-medium rounded-lg hover:bg-slate-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed"
           >
+            <Power className="w-4 h-4" />
             Disconnect
           </button>
+        </div>
+      )}
+
+      {(localError || error) && (
+        <div className="mt-3 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 w-full">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>{localError || error}</span>
         </div>
       )}
     </div>
