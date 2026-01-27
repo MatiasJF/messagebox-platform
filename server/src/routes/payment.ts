@@ -7,17 +7,37 @@ import { Router, Request, Response } from 'express'
 import { PeerPayClient } from '@bsv/message-box-client'
 import { WalletClient } from '@bsv/sdk'
 import { CertificationStorage } from '../storage/CertificationStorage.js'
+import { WalletSessionManager } from '../wallet/WalletSessionManager.js'
 import { InitiatePaymentRequest, InitiatePaymentResponse } from '../types.js'
 
 export function createPaymentRouter(
   storage: CertificationStorage,
-  messageBoxHost: string
+  messageBoxHost: string,
+  sessionManager: WalletSessionManager
 ): Router {
   const router = Router()
 
   router.post('/initiate-payment', async (req: Request, res: Response) => {
     try {
       const { recipient, amount } = req.body as InitiatePaymentRequest
+      const sessionId = req.headers['x-session-id'] as string
+
+      // Validate session
+      if (!sessionId) {
+        return res.status(401).json({
+          success: false,
+          error: 'No wallet session. Please connect your wallet first.'
+        })
+      }
+
+      // Get wallet client from session
+      const walletClient = await sessionManager.getWalletClient(sessionId)
+      if (!walletClient) {
+        return res.status(401).json({
+          success: false,
+          error: 'Wallet session expired or invalid. Please reconnect your wallet.'
+        })
+      }
 
       // Validate input
       if (!recipient || !amount) {
@@ -45,11 +65,7 @@ export function createPaymentRouter(
 
       console.log(`Initiating payment: ${amount} satoshis to ${recipient}`)
 
-      // Create a wallet for the sender
-      // In production, this would be the authenticated user's wallet
-      const walletClient = new WalletClient()
-
-      // Create PeerPay client
+      // Create PeerPay client with existing wallet session
       const peerPayClient = new PeerPayClient({
         walletClient,
         messageBoxHost,

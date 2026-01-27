@@ -6,10 +6,12 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { CertificationStorage } from './storage/CertificationStorage.js'
+import { WalletSessionManager } from './wallet/WalletSessionManager.js'
 import { createCertifyRouter } from './routes/certify.js'
 import { createListCertifiedRouter } from './routes/listCertified.js'
 import { createPaymentRouter } from './routes/payment.js'
 import { createStoreCertificationRouter } from './routes/storeCertification.js'
+import { createWalletSessionRouter } from './routes/walletSession.js'
 
 // Load environment variables
 dotenv.config({ path: '../.env' })
@@ -29,13 +31,17 @@ app.use(express.json())
 // Initialize storage
 const storage = new CertificationStorage(MONGO_URI, MONGO_DB)
 
+// Initialize wallet session manager
+const walletSessionManager = new WalletSessionManager()
+
 // Connect to MongoDB
 await storage.connect()
 
 // Register routes
-app.use('/api', createCertifyRouter(storage, MESSAGEBOX_HOST))
+app.use('/api', createWalletSessionRouter(walletSessionManager))
+app.use('/api', createCertifyRouter(storage, MESSAGEBOX_HOST, walletSessionManager))
 app.use('/api', createListCertifiedRouter(storage))
-app.use('/api', createPaymentRouter(storage, MESSAGEBOX_HOST))
+app.use('/api', createPaymentRouter(storage, MESSAGEBOX_HOST, walletSessionManager))
 app.use('/api', createStoreCertificationRouter(storage))
 
 // Health check endpoint
@@ -72,11 +78,11 @@ const server = app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║   MessageBox Certifier Platform API                      ║
+║   MessageBox Certifier Platform API                        ║
 ║                                                           ║
 ║   Server running on: http://localhost:${PORT}             ║
-║   MessageBox Host: ${MESSAGEBOX_HOST.padEnd(35)} ║
-║   MongoDB: ${MONGO_DB.padEnd(47)} ║
+║   MessageBox Host: ${MESSAGEBOX_HOST.padEnd(35)}          ║
+║   MongoDB: ${MONGO_DB.padEnd(47)}                         ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
   `)

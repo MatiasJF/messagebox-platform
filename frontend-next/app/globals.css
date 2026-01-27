@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .animation-pulse-slow {
+    animation: pulse 2s ease-in-out infinite;
+  }
+}

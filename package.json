@@ -5,10 +5,14 @@
   "main": "server/dist/index.js",
   "scripts": {
     "dev:server": "cd server && npm run dev",
+    "dev:frontend": "cd frontend-next && npm run dev",
     "build:server": "cd server && npm run build",
+    "build:frontend": "cd frontend-next && npm run build",
     "start:server": "cd server && npm start",
+    "start:frontend": "cd frontend-next && npm start",
     "serve:client": "cd client && npx http-server public -p 3001",
-    "dev": "npm run dev:server"
+    "dev": "npm run dev:server",
+    "install:all": "cd server && npm install && cd ../frontend-next && npm install"
   },
   "keywords": ["messagebox", "bsv", "certifier", "payments"],
   "author": "",

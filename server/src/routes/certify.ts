@@ -7,26 +7,45 @@ import { Router, Request, Response } from 'express'
 import { MessageBoxClient } from '@bsv/message-box-client'
 import { WalletClient } from '@bsv/sdk'
 import { CertificationStorage } from '../storage/CertificationStorage.js'
+import { WalletSessionManager } from '../wallet/WalletSessionManager.js'
 import { CertifyRequest, CertifyResponse } from '../types.js'
 
 export function createCertifyRouter(
   storage: CertificationStorage,
-  messageBoxHost: string
+  messageBoxHost: string,
+  sessionManager: WalletSessionManager
 ): Router {
   const router = Router()
 
   router.post('/certify', async (req: Request, res: Response) => {
     try {
       const { alias } = req.body as CertifyRequest
+      const sessionId = req.headers['x-session-id'] as string
 
-      // Create a new wallet for the user
-      // In production, you might want users to bring their own wallet
-      const walletClient = new WalletClient()
+      // Get wallet client from session, or create new wallet if no session
+      let walletClient: WalletClient
+      let identityKey: string
 
-      // Get the user's identity key
-      const identityKey = await walletClient.getPublicKey({
-        identityKey: true
-      })
+      if (sessionId) {
+        // Try to use existing session
+        const existingWallet = await sessionManager.getWalletClient(sessionId)
+        if (existingWallet) {
+          walletClient = existingWallet
+          const sessionInfo = sessionManager.getSessionInfo(sessionId)
+          identityKey = sessionInfo!.identityKey
+          console.log(`Using existing wallet session: ${sessionId}`)
+        } else {
+          // Session expired or invalid, create new wallet
+          walletClient = new WalletClient()
+          const pubKey = await walletClient.getPublicKey({ identityKey: true })
+          identityKey = pubKey.publicKey
+        }
+      } else {
+        // No session provided, create new wallet
+        walletClient = new WalletClient()
+        const pubKey = await walletClient.getPublicKey({ identityKey: true })
+        identityKey = pubKey.publicKey
+      }
 
       console.log(`Certifying identity: ${identityKey}`)
 

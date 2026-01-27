@@ -1,78 +1,56 @@
 # Quick Start Guide
 
-Get the MessageBox Certifier Platform running in 5 minutes.
+Get the MessageBox Certifier Platform running in 5 minutes with Next.js frontend and persistent wallet connections.
 
 ## Prerequisites
 
-- Node.js v18+
-- MongoDB (running locally or MongoDB Atlas)
+- **Node.js** v18+
+- **MongoDB** (running locally or MongoDB Atlas)
+- **BSV Wallet** (Desktop or browser extension)
 
 ## Installation
 
 ```bash
 # 1. Navigate to project
-cd whitelabel-certifier
+cd messagebox-platform
 
-# 2. Install server dependencies
-cd server
-npm install
-cd ..
+# 2. Install all dependencies (server + frontend)
+npm run install:all
 
-# 3. Install frontend dependencies (if using Next.js)
-cd frontend-next
-npm install
-cd ..
-
-# 4. Create .env file
+# 3. Create .env file
 cp .env.example .env
 ```
 
 ## Configuration
 
-Edit `.env` file (use defaults if MongoDB is running locally):
+Edit `.env` file (defaults work if MongoDB runs locally):
 
 ```env
+# Server
 PORT=3000
-MONGO_URI=mongodb://localhost:27017
-MONGO_DB=messagebox_certifier
+NODE_ENV=development
+
+# MessageBox
 MESSAGEBOX_HOST=https://messagebox.babbage.systems
 BSV_NETWORK=mainnet
+
+# MongoDB
+MONGO_URI=mongodb://localhost:27017
+MONGO_DB=messagebox_certifier
 ```
 
-## Starting Services
+## Starting the Platform
 
 ### Step 1: Start MongoDB
 
-**Option A: Run as Background Service (Recommended)**
-
 ```bash
 # macOS (with Homebrew)
-brew services start mongodb/brew/mongodb-community@8.0
+brew services start mongodb-community
 
 # Linux (systemd)
 sudo systemctl start mongod
 
-# Windows
-net start MongoDB
-```
-
-**Option B: Run Locally in Terminal**
-
-If you prefer to run MongoDB in a terminal window (useful for debugging):
-
-```bash
-# macOS/Linux - Run mongod directly
-mongod --dbpath ~/data/db
-
-# Or with config file (if you have one)
-mongod --config /opt/homebrew/etc/mongod.conf
-
-# Windows
-"C:\Program Files\MongoDB\Server\8.0\bin\mongod.exe" --dbpath "C:\data\db"
-```
-
-**Verify MongoDB is Running:**
-```bash
+# Verify it's running
 mongosh --eval "db.adminCommand('ping')"
 # Should return: { ok: 1 }
 ```
@@ -81,8 +59,7 @@ mongosh --eval "db.adminCommand('ping')"
 
 **Terminal 1:**
 ```bash
-cd whitelabel-certifier/server
-npm run dev
+npm run dev:server
 ```
 
 Wait for this output:
@@ -97,239 +74,309 @@ Wait for this output:
 
 ### Step 3: Start Frontend
 
-**Option A: Next.js Frontend (Recommended)**
-
 **Terminal 2:**
 ```bash
-cd whitelabel-certifier/frontend-next
-npm run dev
+npm run dev:frontend
 ```
 
-Access at: **http://localhost:3000** (Next.js will auto-select available port)
+Frontend starts at: **http://localhost:3001**
 
-**Option B: Simple HTML Frontend**
+## Access the Platform
 
-**Terminal 2:**
-```bash
-cd whitelabel-certifier/client
-npx http-server public -p 3001
+- **Frontend**: http://localhost:3001
+- **Backend API**: http://localhost:3000
+
+## Complete Workflow
+
+### 1. Connect Wallet (One Time)
+
+1. Open http://localhost:3001
+2. Click **"Connect Wallet"** in the header
+3. Approve connection in your wallet app
+4. See green dot = Connected ✓
+
+**Your wallet stays connected across:**
+- Page reloads
+- Navigation between pages
+- Multiple payments (no re-approval needed!)
+
+### 2. Certify Your Identity
+
+1. (Optional) Enter display name
+2. Click **"Certify My Identity"**
+3. View your identity key and transaction ID
+
+**Behind the scenes:**
+- Identity registered on BSV blockchain
+- Certification stored in MongoDB
+- Wallet session created (lasts 30 minutes)
+
+### 3. Send Payments
+
+1. Navigate to **Payments** page (wallet auto-reconnects!)
+2. Click **"Show All"** to load certified users
+3. Search by name (optional)
+4. Select a user
+5. Enter amount in satoshis
+6. Click **"Send Payment"**
+7. ✅ Payment sent (no wallet approval popup!)
+
+**Key Feature:**
+- **No repeated approvals** - Send 10 payments, get 1 approval
+- **Persistent session** - Reload page, still connected
+- **30-minute window** - Session auto-extends with activity
+
+## Session Flow
+
 ```
-
-Access at: **http://localhost:3001**
+┌─────────────────────────────────────────────┐
+│ 1. Connect Wallet                           │
+│    → Wallet prompts for approval (ONCE)     │
+│    → Session created & saved to localStorage│
+│    → Green dot shows "Connected"            │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ 2. Page Reload                              │
+│    → Session ID loaded from localStorage    │
+│    → Backend validates session              │
+│    → Wallet reconnects automatically ✓      │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ 3. Send Multiple Payments                   │
+│    → Each payment uses same session         │
+│    → No wallet approval prompts             │
+│    → Session extends for 30 more minutes    │
+└─────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────┐
+│ 4. Session Expires (30 min inactive)        │
+│    → "Wallet Disconnected" notification     │
+│    → Click "Connect Wallet" to reconnect    │
+└─────────────────────────────────────────────┘
+```
 
 ## Stopping Services
 
-### Stop All Services
-
-**Stop Backend Server:**
-```bash
-# In Terminal 1, press: Ctrl+C
-# Or kill the process:
-pkill -f "nodemon --watch src"
-```
-
-**Stop Frontend:**
-```bash
-# Next.js - In Terminal 2, press: Ctrl+C
-# Or kill the process:
-pkill -f "next dev"
-
-# Simple HTML - In Terminal 2, press: Ctrl+C
-# Or kill by port:
-lsof -ti:3001 | xargs kill -9
-```
-
-**Stop MongoDB:**
-
-If running as a service:
-```bash
-# macOS (with Homebrew)
-brew services stop mongodb/brew/mongodb-community@8.0
-
-# Linux (systemd)
-sudo systemctl stop mongod
-
-# Windows
-net stop MongoDB
-```
-
-If running locally in terminal:
-```bash
-# In MongoDB terminal, press: Ctrl+C
-# Or kill the process:
-pkill mongod
-
-# Or kill by port:
-lsof -ti:27017 | xargs kill -9
-```
-
-### Quick Stop All (macOS/Linux)
+### Quick Stop All
 
 ```bash
-# Stop backend
-pkill -f "nodemon"
-pkill -f "tsx"
-
-# Stop frontend
-pkill -f "next dev"
-# or
-lsof -ti:3001 | xargs kill -9
+# Stop backend (Terminal 1: Ctrl+C)
+# Stop frontend (Terminal 2: Ctrl+C)
 
 # Stop MongoDB
-brew services stop mongodb/brew/mongodb-community@8.0
+brew services stop mongodb-community  # macOS
+sudo systemctl stop mongod            # Linux
 ```
 
-### Check What's Running
+### Force Stop (if needed)
 
 ```bash
-# Check if MongoDB is running
-brew services list | grep mongodb
-# or
+# Kill backend
+lsof -ti:3000 | xargs kill -9
+
+# Kill frontend
+lsof -ti:3001 | xargs kill -9
+
+# Kill MongoDB
+brew services stop mongodb-community
+```
+
+### Check Running Services
+
+```bash
+# Check MongoDB
 mongosh --eval "db.adminCommand('ping')"
 
-# Check what's using ports 3000 and 3001
-lsof -i :3000
-lsof -i :3001
+# Check ports
+lsof -i :3000  # Backend
+lsof -i :3001  # Frontend
+lsof -i :27017 # MongoDB
 
-# Check running Node processes
+# Check Node processes
 ps aux | grep node | grep -v grep
 ```
 
-## Access
-
-**Next.js Frontend:**
-- http://localhost:3000 (or whatever port Next.js shows)
-
-**Simple HTML Frontend:**
-- **Certification Page**: http://localhost:3001
-- **Payments Page**: http://localhost:3001/payments.html
-
-**Backend API:**
-- http://localhost:3000
-
-## Test the Flow
-
-### 1. Certify an Identity
-
-1. Go to http://localhost:3001
-2. Enter a display name (e.g., "Alice")
-3. Click "Certify My Identity"
-4. Copy the identity key shown
-
-### 2. Certify Another Identity
-
-1. Reload the page
-2. Enter another name (e.g., "Bob")
-3. Click "Certify My Identity"
-
-### 3. Send a Payment
-
-1. Go to http://localhost:3001/payments.html
-2. Click "Show All"
-3. Select a certified user
-4. Enter amount (e.g., 10000 satoshis)
-5. Click "Send Payment"
-
 ## Troubleshooting
 
-### MongoDB not running?
+### MongoDB Not Running
 
 ```bash
 # Start MongoDB
-brew services start mongodb/brew/mongodb-community@8.0
+brew services start mongodb-community  # macOS
+sudo systemctl start mongod            # Linux
 
-# Check status
-brew services list | grep mongodb
-
-# Verify connection
+# Verify
 mongosh --eval "db.adminCommand('ping')"
 
-# Or use MongoDB Atlas (cloud) - free tier available
-# Get connection string and update MONGO_URI in .env
+# Alternative: Use MongoDB Atlas (cloud)
+# Get connection string, update MONGO_URI in .env
 ```
 
-### Port already in use?
+### Port Already in Use
 
-**Find what's using the port:**
 ```bash
+# Check what's using port 3000
 lsof -i :3000
-lsof -i :3001
-```
 
-**Kill the process:**
-```bash
-# Kill by port
+# Kill process on port
 lsof -ti:3000 | xargs kill -9
-lsof -ti:3001 | xargs kill -9
 
-# Or change PORT in .env
+# Or change port in .env
 PORT=3002
 ```
 
-### Backend won't start?
+### Wallet Won't Connect
+
+1. Ensure BSV wallet installed:
+   - [Panda Wallet](https://www.pandawallet.com/) (Recommended)
+   - Desktop BSV wallet with WalletClient support
+2. Unlock wallet
+3. Check browser console (F12) for errors
+4. Try refreshing page and reconnecting
+
+### Session Expired
+
+**Error:** "Wallet session expired. Please reconnect."
+
+**Solution:**
+- Sessions last 30 minutes
+- Click "Connect Wallet" to create new session
+- Any wallet action extends session
+
+### Payment Fails
+
+1. Check wallet connected (green dot in header)
+2. Click "Connect Wallet" if disconnected
+3. Verify recipient is certified
+4. Check sufficient BSV balance
+5. View backend logs for details
+
+### Frontend Won't Load
 
 ```bash
-# Check if MongoDB is connected
-mongosh --eval "db.adminCommand('ping')"
-
-# Check server logs
-cd server
-tail -f server.log
-
-# Restart from scratch
-pkill -f nodemon
-cd server
-npm run dev
-```
-
-### Frontend won't load?
-
-```bash
-# Next.js frontend
+# Clear Next.js cache
 cd frontend-next
 rm -rf .next node_modules/.cache
 npm run dev
-
-# Simple HTML frontend - try different server
-cd client/public
-python3 -m http.server 3001
-# or
-php -S localhost:3001
 ```
 
-### Can't connect wallet?
+### Backend Won't Start
 
-Make sure you have a BSV wallet installed:
-- [Panda Wallet](https://www.pandawallet.com/) (Recommended)
-- [Yours Wallet](https://yours.org/)
+```bash
+# Check MongoDB connection
+mongosh --eval "db.adminCommand('ping')"
 
-Check browser console (F12) for errors.
+# Restart backend
+cd server
+npm run dev
+```
 
-## Next Steps
+## Features Summary
 
-- Read the full [README.md](README.md) for detailed documentation
-- Explore the API at http://localhost:3000
-- Customize the frontend styling in `client/public/styles.css`
-- Add authentication and user management
-- Deploy to production
+### Frontend (Next.js + React)
+- ✅ Modern UI with Tailwind CSS
+- ✅ Persistent wallet connections
+- ✅ Auto-reconnection on page load
+- ✅ Visual connection status
+- ✅ Search certified users
+- ✅ Responsive design
+
+### Backend (Node.js + Express)
+- ✅ Wallet session management
+- ✅ 30-minute session timeout
+- ✅ Auto-cleanup expired sessions
+- ✅ MongoDB integration
+- ✅ MessageBox SDK integration
+
+### Key Benefits
+- **Connect once, use everywhere** - No repeated approvals
+- **Reload-safe** - Wallet stays connected
+- **Multi-payment** - Send 100 payments, approve once
+- **Auto-reconnect** - Session validates on load
 
 ## API Quick Reference
 
+### Wallet Session
+
 ```bash
-# Certify identity
+# Connect wallet (creates session)
+curl -X POST http://localhost:3000/api/wallet/connect
+
+# Check session status
+curl -H "X-Session-Id: SESSION_ID" \
+  http://localhost:3000/api/wallet/status
+
+# Disconnect
+curl -X POST http://localhost:3000/api/wallet/disconnect \
+  -H "X-Session-Id: SESSION_ID"
+```
+
+### Identity & Payments
+
+```bash
+# Certify identity (with session)
 curl -X POST http://localhost:3000/api/certify \
   -H "Content-Type: application/json" \
+  -H "X-Session-Id: SESSION_ID" \
   -d '{"alias": "John"}'
 
 # List certified users
 curl http://localhost:3000/api/certified-users
 
-# Send payment
+# Send payment (requires session)
 curl -X POST http://localhost:3000/api/initiate-payment \
   -H "Content-Type: application/json" \
+  -H "X-Session-Id: SESSION_ID" \
   -d '{"recipient": "IDENTITY_KEY", "amount": 10000}'
+```
+
+## Project Scripts
+
+```bash
+# Install all dependencies
+npm run install:all
+
+# Development
+npm run dev:server    # Start backend only
+npm run dev:frontend  # Start frontend only
+
+# Production
+npm run build:server
+npm run build:frontend
+npm run start:server
+npm run start:frontend
+```
+
+## Next Steps
+
+- Read full [README.md](README.md) for detailed documentation
+- Explore wallet session management
+- Customize Tailwind CSS styling in `frontend-next/`
+- Add user authentication
+- Deploy to production with PM2 or Docker
+
+## Project Structure
+
+```
+messagebox-platform/
+├── server/              # Backend (port 3000)
+│   ├── src/
+│   │   ├── wallet/      # Session manager
+│   │   ├── routes/      # API endpoints
+│   │   └── storage/     # MongoDB layer
+│   └── package.json
+│
+└── frontend-next/       # Frontend (port 3001)
+    ├── app/             # Next.js pages
+    ├── components/      # React components
+    ├── lib/             # Wallet manager
+    └── package.json
 ```
 
 ---
 
-That's it! You now have a working MessageBox certifier platform.
+**That's it!** You now have a modern BSV payment platform with persistent wallet connections.
+
+Open **http://localhost:3001** and start certifying identities and sending payments!
