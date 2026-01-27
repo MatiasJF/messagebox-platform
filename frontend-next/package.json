@@ -9,8 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@bsv/sdk": "^1.1.58",
     "@bsv/message-box-client": "^1.4.5",
+    "@bsv/sdk": "^1.1.58",
+    "lucide-react": "^0.563.0",
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
