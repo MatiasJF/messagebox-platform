@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MessageBox Certifier - Send Payment</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>MessageBox Certifier Platform</h1>
+      <nav>
+        <a href="index.html">Certify Identity</a>
+        <a href="payments.html" class="active">Send Payment</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Send Payment</h2>
+        <p class="description">
+          Send Bitcoin payments to certified users on the MessageBox network.
+          Search for a user below or browse all certified identities.
+        </p>
+
+        <!-- Search Bar -->
+        <div class="search-bar">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search by display name..."
+            class="search-input"
+          >
+          <button class="btn btn-secondary" id="searchBtn">Search</button>
+          <button class="btn btn-secondary" id="showAllBtn">Show All</button>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingUsers" class="loading" style="display: none;">
+          <div class="spinner"></div>
+          <p>Loading certified users...</p>
+        </div>
+
+        <!-- Users List -->
+        <div id="usersList" class="users-list">
+          <p class="placeholder">Click "Show All" to load certified users</p>
+        </div>
+      </section>
+
+      <!-- Payment Form -->
+      <section class="card" id="paymentSection" style="display: none;">
+        <h2>Payment Details</h2>
+
+        <div class="selected-user">
+          <h3>Sending to:</h3>
+          <div class="user-info">
+            <div><strong>Display Name:</strong> <span id="selectedAlias"></span></div>
+            <div><strong>Identity Key:</strong> <code id="selectedIdentity"></code></div>
+          </div>
+        </div>
+
+        <form id="paymentForm">
+          <div class="form-group">
+            <label for="amount">Amount (satoshis)</label>
+            <input
+              type="number"
+              id="amount"
+              name="amount"
+              placeholder="Enter amount in satoshis"
+              min="1"
+              required
+            >
+            <small>1 satoshi = 0.00000001 BSV</small>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="paymentBtn">
+            Send Payment
+          </button>
+          <button type="button" class="btn btn-secondary" id="cancelBtn">
+            Cancel
+          </button>
+        </form>
+
+        <div id="paymentLoading" class="loading" style="display: none;">
+          <div class="spinner"></div>
+          <p>Sending payment...</p>
+        </div>
+
+        <div id="paymentResult" class="result" style="display: none;">
+          <div class="success-message">
+            <h3>Payment Sent Successfully!</h3>
+            <p id="paymentMessage"></p>
+            <button class="btn btn-secondary" onclick="location.reload()">
+              Send Another Payment
+            </button>
+          </div>
+        </div>
+
+        <div id="paymentError" class="error" style="display: none;">
+          <h3>Payment Failed</h3>
+          <p id="paymentErrorMessage"></p>
+          <button class="btn btn-secondary" onclick="location.reload()">
+            Try Again
+          </button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    let selectedRecipient = null
+
+    // Load all certified users
+    async function loadCertifiedUsers(searchQuery = null) {
+      const loadingUsers = document.getElementById('loadingUsers')
+      const usersList = document.getElementById('usersList')
+
+      loadingUsers.style.display = 'block'
+      usersList.innerHTML = ''
+
+      try {
+        const url = searchQuery
+          ? `http://localhost:3000/api/certified-users/search?q=${encodeURIComponent(searchQuery)}`
+          : 'http://localhost:3000/api/certified-users'
+
+        const response = await fetch(url)
+        const data = await response.json()
+
+        loadingUsers.style.display = 'none'
+
+        if (data.success && data.users.length > 0) {
+          usersList.innerHTML = data.users.map(user => `
+            <div class="user-card" data-identity="${user.identityKey}">
+              <div class="user-header">
+                <h3>${user.alias || 'Anonymous User'}</h3>
+                <span class="badge">Certified</span>
+              </div>
+              <div class="user-details">
+                <div><strong>Identity:</strong> <code>${user.identityKey.substring(0, 20)}...</code></div>
+                <div><strong>Certified:</strong> ${new Date(user.certificationDate).toLocaleDateString()}</div>
+              </div>
+              <button class="btn btn-primary select-user-btn" data-identity="${user.identityKey}" data-alias="${user.alias || 'Anonymous'}">
+                Select for Payment
+              </button>
+            </div>
+          `).join('')
+
+          // Add click handlers to select buttons
+          document.querySelectorAll('.select-user-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              const identity = e.target.getAttribute('data-identity')
+              const alias = e.target.getAttribute('data-alias')
+              selectUser(identity, alias)
+            })
+          })
+        } else {
+          usersList.innerHTML = '<p class="placeholder">No certified users found</p>'
+        }
+      } catch (err) {
+        loadingUsers.style.display = 'none'
+        usersList.innerHTML = `<p class="error">Failed to load users: ${err.message}</p>`
+      }
+    }
+
+    // Select a user for payment
+    function selectUser(identityKey, alias) {
+      selectedRecipient = identityKey
+      document.getElementById('selectedAlias').textContent = alias
+      document.getElementById('selectedIdentity').textContent = identityKey
+      document.getElementById('paymentSection').style.display = 'block'
+      document.getElementById('paymentSection').scrollIntoView({ behavior: 'smooth' })
+    }
+
+    // Event listeners
+    document.getElementById('showAllBtn').addEventListener('click', () => {
+      loadCertifiedUsers()
+    })
+
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      const query = document.getElementById('searchInput').value.trim()
+      if (query) {
+        loadCertifiedUsers(query)
+      } else {
+        loadCertifiedUsers()
+      }
+    })
+
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const query = e.target.value.trim()
+        if (query) {
+          loadCertifiedUsers(query)
+        } else {
+          loadCertifiedUsers()
+        }
+      }
+    })
+
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      document.getElementById('paymentSection').style.display = 'none'
+      selectedRecipient = null
+    })
+
+    document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+
+      if (!selectedRecipient) {
+        alert('Please select a recipient first')
+        return
+      }
+
+      const amount = parseInt(document.getElementById('amount').value)
+      const paymentLoading = document.getElementById('paymentLoading')
+      const paymentResult = document.getElementById('paymentResult')
+      const paymentError = document.getElementById('paymentError')
+      const form = document.getElementById('paymentForm')
+
+      paymentResult.style.display = 'none'
+      paymentError.style.display = 'none'
+      paymentLoading.style.display = 'block'
+      form.style.display = 'none'
+
+      try {
+        const response = await fetch('http://localhost:3000/api/initiate-payment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            recipient: selectedRecipient,
+            amount: amount
+          })
+        })
+
+        const data = await response.json()
+
+        paymentLoading.style.display = 'none'
+
+        if (data.success) {
+          document.getElementById('paymentMessage').textContent =
+            `Successfully sent ${amount} satoshis to ${document.getElementById('selectedAlias').textContent}`
+          paymentResult.style.display = 'block'
+        } else {
+          document.getElementById('paymentErrorMessage').textContent = data.error || 'Unknown error occurred'
+          paymentError.style.display = 'block'
+        }
+      } catch (err) {
+        paymentLoading.style.display = 'none'
+        document.getElementById('paymentErrorMessage').textContent = 'Failed to send payment: ' + err.message
+        paymentError.style.display = 'block'
+      }
+    })
+  </script>
+</body>
+</html>

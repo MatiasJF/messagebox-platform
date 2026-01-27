@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MessageBox Certifier - Identity Certification</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>MessageBox Certifier Platform</h1>
+      <nav>
+        <a href="index.html" class="active">Certify Identity</a>
+        <a href="payments.html">Send Payment</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Identity Certification</h2>
+        <p class="description">
+          Certify your identity with the MessageBox network. This will register your identity
+          on the BSV blockchain and make you discoverable for receiving messages and payments.
+        </p>
+
+        <form id="certifyForm">
+          <div class="form-group">
+            <label for="alias">Display Name (Optional)</label>
+            <input
+              type="text"
+              id="alias"
+              name="alias"
+              placeholder="Enter a friendly name or alias"
+              maxlength="50"
+            >
+            <small>This helps others identify you when sending payments</small>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="certifyBtn">
+            Certify My Identity
+          </button>
+        </form>
+
+        <div id="loading" class="loading" style="display: none;">
+          <div class="spinner"></div>
+          <p>Certifying your identity on the blockchain...</p>
+        </div>
+
+        <div id="result" class="result" style="display: none;">
+          <div class="success-message">
+            <h3>Certification Successful!</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <strong>Your Identity Key:</strong>
+                <code id="identityKey"></code>
+              </div>
+              <div class="info-item">
+                <strong>Display Name:</strong>
+                <span id="displayAlias">-</span>
+              </div>
+              <div class="info-item">
+                <strong>Transaction ID:</strong>
+                <code id="txid"></code>
+              </div>
+            </div>
+            <p class="info-text">
+              Your identity has been certified and broadcast to the MessageBox network.
+              You can now receive payments and messages.
+            </p>
+            <button class="btn btn-secondary" onclick="location.reload()">
+              Certify Another Identity
+            </button>
+          </div>
+        </div>
+
+        <div id="error" class="error" style="display: none;">
+          <h3>Error</h3>
+          <p id="errorMessage"></p>
+          <button class="btn btn-secondary" onclick="location.reload()">
+            Try Again
+          </button>
+        </div>
+      </section>
+
+      <section class="card info-card">
+        <h3>What is Identity Certification?</h3>
+        <ul>
+          <li>
+            <strong>Blockchain Registration:</strong> Your identity is registered on the BSV blockchain
+            using a cryptographically signed transaction.
+          </li>
+          <li>
+            <strong>Discoverability:</strong> Others can find your MessageBox server address by looking
+            up your identity key on the overlay network.
+          </li>
+          <li>
+            <strong>Secure Communications:</strong> All messages and payments are encrypted and authenticated
+            using your identity key.
+          </li>
+          <li>
+            <strong>Decentralized:</strong> No central authority controls your identity - it's secured
+            by the Bitcoin SV blockchain.
+          </li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // Page-specific JavaScript for certification
+    document.getElementById('certifyForm').addEventListener('submit', async (e) => {
+      e.preventDefault()
+
+      const alias = document.getElementById('alias').value.trim()
+      const certifyBtn = document.getElementById('certifyBtn')
+      const loading = document.getElementById('loading')
+      const result = document.getElementById('result')
+      const error = document.getElementById('error')
+      const form = document.getElementById('certifyForm')
+
+      // Hide previous results
+      result.style.display = 'none'
+      error.style.display = 'none'
+
+      // Show loading
+      loading.style.display = 'block'
+      certifyBtn.disabled = true
+      form.style.display = 'none'
+
+      try {
+        const response = await fetch('http://localhost:3000/api/certify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ alias: alias || undefined })
+        })
+
+        const data = await response.json()
+
+        loading.style.display = 'none'
+
+        if (data.success) {
+          // Show success
+          document.getElementById('identityKey').textContent = data.identityKey
+          document.getElementById('displayAlias').textContent = data.alias || 'Not provided'
+          document.getElementById('txid').textContent = data.txid
+          result.style.display = 'block'
+        } else {
+          // Show error
+          document.getElementById('errorMessage').textContent = data.error || 'Unknown error occurred'
+          error.style.display = 'block'
+        }
+      } catch (err) {
+        loading.style.display = 'none'
+        document.getElementById('errorMessage').textContent = 'Failed to connect to server: ' + err.message
+        error.style.display = 'block'
+      }
+    })
+  </script>
+</body>
+</html>
