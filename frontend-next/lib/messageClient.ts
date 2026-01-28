@@ -88,11 +88,12 @@ export async function checkInbox(
     for (const msg of messages) {
       try {
         // If this is a payment message with transaction ID, internalize it
-        if (msg.body && msg.body.txid) {
-          console.log('Internalizing payment transaction:', msg.body.txid)
+        const bodyObj = typeof msg.body === 'object' && msg.body !== null ? msg.body as Record<string, any> : null
+        if (bodyObj && bodyObj.txid) {
+          console.log('Internalizing payment transaction:', bodyObj.txid)
 
           // Fetch BEEF from WhatsOnChain
-          const tx = await fetchBeef(msg.body.txid, 'main')
+          const tx = await fetchBeef(bodyObj.txid, 'main')
 
           // Internalize the transaction with proper payment remittance
           const args = {
@@ -119,11 +120,11 @@ export async function checkInbox(
       }
 
       processedMessages.push({
-        messageId: msg.messageId || msg.id || 'unknown',
+        messageId: msg.messageId || 'unknown',
         sender: msg.sender || 'unknown',
-        messageBox: msg.messageBox || messageBox,
+        messageBox: messageBox,
         body: msg.body || msg,
-        timestamp: new Date(msg.timestamp || Date.now())
+        timestamp: new Date(Date.now())
       })
     }
 

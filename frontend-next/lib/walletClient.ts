@@ -24,7 +24,16 @@ export async function connectWallet(): Promise<{ identityKey: string }> {
 
     // Get identity key from wallet (this prompts the user's wallet)
     const result = await walletClientInstance.getPublicKey({ identityKey: true })
+
+    if (!result.publicKey) {
+      throw new Error('Wallet returned no identity key')
+    }
+
     identityKey = result.publicKey
+
+    if (!identityKey) {
+      throw new Error('Failed to obtain identity key from wallet')
+    }
 
     console.log('✓ Wallet connected:', identityKey.substring(0, 20) + '...')
 
