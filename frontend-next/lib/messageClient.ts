@@ -13,31 +13,20 @@ export interface ReceivedMessage {
   timestamp: Date
 }
 
-async function fetchBeef(txid: string, chain: 'main' | 'test' = 'main'): Promise<any> {
-  const baseUrl = `https://api.whatsonchain.com/v1/bsv/${chain}`
-
-  console.log(`Fetching BEEF for transaction ${txid}...`)
-
-  // Fetch BEEF from WhatsOnChain's BEEF endpoint
-  const beefResponse = await fetch(`${baseUrl}/tx/${txid}/beef`)
-
-  if (!beefResponse.ok) {
-    throw new Error(`Failed to fetch BEEF for transaction ${txid}: ${beefResponse.statusText}`)
+/**
+ * Safely parses a message body into a payment token object.
+ * PeerPayClient sends the body as JSON.stringify({ transaction, customInstructions, amount })
+ */
+function parsePaymentToken(body: string | Record<string, any>): Record<string, any> | null {
+  try {
+    const parsed = typeof body === 'string' ? JSON.parse(body) : body
+    if (parsed && parsed.transaction && parsed.customInstructions) {
+      return parsed
+    }
+    return null
+  } catch {
+    return null
   }
-
-  const beefHex = await beefResponse.text()
-
-  if (!beefHex || beefHex.includes('error')) {
-    throw new Error(`Failed to fetch BEEF for transaction ${txid}`)
-  }
-
-  // Dynamically import Transaction and Utils
-  const { Transaction, Utils } = await import('@bsv/sdk')
-
-  // Parse BEEF from hex
-  const beef = Transaction.fromBEEF(Utils.toArray(beefHex, 'hex'))
-
-  return beef
 }
 
 export async function checkInbox(
@@ -48,8 +37,8 @@ export async function checkInbox(
   }
 
   try {
-    // Dynamically import MessageBoxClient
-    const { MessageBoxClient } = await import('@bsv/message-box-client')
+    // Dynamically import PeerPayClient (extends MessageBoxClient)
+    const { PeerPayClient } = await import('@bsv/message-box-client')
 
     // Get or create wallet client
     const walletClient = await ensureWalletClient()
@@ -59,19 +48,19 @@ export async function checkInbox(
 
     console.log(`Checking inbox: ${messageBox}`)
 
-    // Create MessageBox client
-    const messageBoxClient = new MessageBoxClient({
+    // Create PeerPay client (has listIncomingPayments + acceptPayment built in)
+    const peerPayClient = new PeerPayClient({
       walletClient,
-      host: messageBoxHost,
+      messageBoxHost,
       enableLogging: true
     })
 
     // Initialize the client
-    await messageBoxClient.init()
+    await peerPayClient.init()
 
     // List messages from the specified message box
     console.log('Calling listMessages...')
-    const messages = await messageBoxClient.listMessages({ messageBox })
+    const messages = await peerPayClient.listMessages({ messageBox })
 
     console.log('Raw messages response:', messages)
 
@@ -87,24 +76,24 @@ export async function checkInbox(
     const processedMessages = []
     for (const msg of messages) {
       try {
-        // If this is a payment message with transaction ID, internalize it
-        const bodyObj = typeof msg.body === 'object' && msg.body !== null ? msg.body as Record<string, any> : null
-        if (bodyObj && bodyObj.txid) {
-          console.log('Internalizing payment transaction:', bodyObj.txid)
+        // Parse the message body as a PeerPay payment token
+        // Token structure: { transaction, customInstructions: { derivationPrefix, derivationSuffix }, amount }
+        const token = parsePaymentToken(msg.body)
 
-          // Fetch BEEF from WhatsOnChain
-          const tx = await fetchBeef(bodyObj.txid, 'main')
+        if (token && token.transaction) {
+          console.log('Internalizing payment from:', msg.sender)
 
-          // Internalize the transaction with proper payment remittance
+          // Internalize using the transaction embedded in the token
+          // Output 0 is the payment (sender sets randomizeOutputs: false)
           const args = {
-            tx: tx.toAtomicBEEF(),
+            tx: token.transaction,
             outputs: [{
-              outputIndex: 0,
+              outputIndex: token.outputIndex ?? 0,
               protocol: 'wallet payment',
               paymentRemittance: {
                 senderIdentityKey: msg.sender,
-                derivationPrefix: '',
-                derivationSuffix: ''
+                derivationPrefix: token.customInstructions.derivationPrefix,
+                derivationSuffix: token.customInstructions.derivationSuffix
               }
             }],
             description: `Payment from ${msg.sender.substring(0, 20)}...`,
