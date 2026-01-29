@@ -113,7 +113,7 @@ export async function checkInbox(
         sender: msg.sender || 'unknown',
         messageBox: messageBox,
         body: msg.body || msg,
-        timestamp: new Date(Date.now())
+        timestamp: msg.created_at ? new Date(msg.created_at) : new Date()
       })
     }
 
@@ -126,15 +126,15 @@ export async function checkInbox(
 
 export async function acknowledgeMessage(
   messageId: string,
-  messageBox: string = 'payment_inbox'
+  _messageBox: string = 'payment_inbox'
 ): Promise<void> {
   if (typeof window === 'undefined') {
     throw new Error('Message acknowledgment can only be done in the browser')
   }
 
   try {
-    // Dynamically import MessageBoxClient
-    const { MessageBoxClient } = await import('@bsv/message-box-client')
+    // Dynamically import PeerPayClient (extends MessageBoxClient)
+    const { PeerPayClient } = await import('@bsv/message-box-client')
 
     // Get or create wallet client
     const walletClient = await ensureWalletClient()
@@ -144,19 +144,19 @@ export async function acknowledgeMessage(
 
     console.log(`Acknowledging message: ${messageId}`)
 
-    // Create MessageBox client
-    const messageBoxClient = new MessageBoxClient({
+    // Create PeerPay client (same as in checkInbox for consistency)
+    const peerPayClient = new PeerPayClient({
       walletClient,
-      host: messageBoxHost,
+      messageBoxHost,
       enableLogging: true
     })
 
     // Initialize the client
-    await messageBoxClient.init()
+    await peerPayClient.init()
 
     // Acknowledge the message (removes it from server)
     // Note: messageIds expects an array of strings
-    await messageBoxClient.acknowledgeMessage({ messageIds: [messageId] })
+    await peerPayClient.acknowledgeMessage({ messageIds: [messageId] })
 
     console.log('Message acknowledged successfully')
   } catch (error: any) {
